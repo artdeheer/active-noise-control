@@ -1,4 +1,7 @@
 import numpy as np
+
+import matplotlib
+matplotlib.use('Agg') # This tells Matplotlib NOT to look for a window/display
 import matplotlib.pyplot as plt
 
 # 1. System Parameters
@@ -51,4 +54,6 @@ plt.xlabel("Time [s]")
 plt.ylabel("Amplitude")
 plt.legend()
 plt.grid(True)
-plt.show()
+plt.grid(True)
+plt.savefig("anc_results.png") # Save it to your folder
+print("Simulation finished. Result saved as 'anc_results.png'")
