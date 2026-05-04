@@ -1,19 +1,34 @@
-from .base_model import SecondaryPathModel
 import numpy as np
+import config as cfg
 
-class InvasiveModel(SecondaryPathModel):
-    def __init__(self, s_taps, mu_m):
-        super().__init__(s_taps)
-        self.mu_m = mu_m # Step size for modeling
-        self.v_history = np.zeros(s_taps) # History of injected noise
+class InvasiveEngine:
+    def __init__(self):
+        # 1. The 'Guess' of the secondary path
+        self.s_hat = np.zeros(10)
+        
+        # 2. Buffer for the SECRET probe signal (White Noise)
+        self.v_buffer = np.zeros(10)
 
-    def generate_noise(self, amplitude):
-        """Returns a white noise sample v(n) to be played."""
-        return np.random.normal(0, amplitude)
-
-    def update(self, error_sample, ref_sample, v_n):
+    def update(self, x_n, e_n, y_n):
         """
-        Math: s_hat = s_hat + mu_m * error * v_history[cite: 1]
-        Focuses purely on the correlation between white noise and the mic.[cite: 1]
+        Engine A: Updates s_hat by injecting white noise.
         """
-        pass
+        # --- STEP A: Generate the 'Probe' ---
+        # A tiny bit of white noise (e.g., volume 0.01)
+        v_n = np.random.normal(0, 0.01)
+
+        # --- STEP B: Update Probe History ---
+        self.v_buffer[1:] = self.v_buffer[:-1]
+        self.v_buffer[0] = v_n
+
+        # --- STEP C: Calculate Modeling Error ---
+        # We check how well our s_hat predicts the microphone signal
+        # using ONLY the probe signal as the reference.
+        e_modeling = e_n - np.dot(self.v_buffer, self.s_hat)
+
+        # --- STEP D: Update s_hat ---
+        self.s_hat += cfg.MU_MODELING * e_modeling * self.v_buffer
+
+        # CRITICAL: We return s_hat AND the v_n so the Brain 
+        # can add it to the speaker output
+        return self.s_hat, v_n
