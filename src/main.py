@@ -1,89 +1,88 @@
+import os
+import json
 import numpy as np
+from datetime import datetime
 import matplotlib
-# Force Matplotlib to use a non-interactive backend (Agg)
-# This prevents the '_tkinter.TclError: no display name' error
 matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 
+import config as cfg
 from virtual_duct import VirtualDuct
 from anc_brain import ANCBrain
-from algorithms.non_invasive import NonInvasiveEngine
-from algorithms.invasive import InvasiveEngine # Import both for comparison
+from algorithms.invasive import InvasiveEngine 
 
-def run_simulation(engine_type="non_invasive"):
-    # 1. Setup Environment
-    fs = 2500  
-    duration = 5  
+def run_simulation(engine_type="invasive"):
+    fs = cfg.FS  
+    duration = 100  
     n_samples = fs * duration
 
-    # Initialize components
     duct = VirtualDuct()
-    
-    if engine_type == "invasive":
-        engine = InvasiveEngine()
-    else:
-        engine = NonInvasiveEngine()
-        
+    engine = InvasiveEngine()
     brain = ANCBrain(engine)
 
-    # 2. Storage
-    error_history = []
-    noise_history = []
+    error_history, noise_history, anti_noise_history = [], [], []
 
     print(f"Starting {engine_type} simulation...")
-
-    # 3. THE MAIN LOOP
     current_e_n = 0 
+
     for n in range(n_samples):
         t = n / fs
+        # Your specific working signal
         x_n = 0.5 * np.sin(2 * np.pi * 100 * t) + 0.2 * np.sin(2 * np.pi * 400 * t)
         
-        if n < 500:
-            # --- WARM UP PHASE ---
-            # We don't want the brain to try to cancel yet (y_n = 0)
-            # But we DO want the modeling engine to learn the path!
+        # 1. Process Sample (Logic Step)
+        if n < 1000:
             s_hat, v_n = brain.modeling_engine.update(x_n, current_e_n, 0)
-            y_total = v_n # Only play the white noise hiss
+            y_out = v_n
         else:
-            # --- ACTIVE PHASE ---
-            y_total = brain.process_sample(x_n, current_e_n)
+            y_out = brain.process_sample(x_n, current_e_n)
         
-        # Step 2: Duct simulates physics
-        d_n, current_e_n = duct.simulate_step(x_n, y_n=y_total)
+        # 2. Physics Step
+        d_n, current_e_n = duct.simulate_step(x_n, y_n=y_out)
         
-        # Save results
+        # 3. Storage
         error_history.append(current_e_n)
         noise_history.append(d_n)
+        anti_noise_history.append(y_out)
 
-        # Updated debug block in main.py
-        if n == 1000:
-            # We check the weights; if they aren't 0.0, the brain is learning!
-            weight_sum = np.sum(np.abs(brain.h_weights))
-            print(f"Sample {n}: Brain Activity (Sum of Absolute Weights) = {weight_sum}")
+    return noise_history, error_history, anti_noise_history
 
-    return noise_history, error_history
+def save_run(engine_type, noise, error, anti):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_dir = os.path.join("results", engine_type, timestamp)
+    os.makedirs(run_dir, exist_ok=True)
 
-# --- RUN EXPERIMENTS ---
-# Run Non-Invasive
-noise_ni, error_ni = run_simulation("invasive")
+    # Log parameters
+    with open(os.path.join(run_dir, 'config.json'), 'w') as f:
+        json.dump({
+            "MU_CONTROLLER": cfg.MU_CONTROLLER,
+            "MU_MODELING": cfg.MU_MODELING,
+            "M_TAPS": cfg.M_TAPS
+        }, f, indent=4)
 
-# Run Invasive (Optional: Uncomment after you create invasive.py)
-# noise_inv, error_inv = run_simulation("invasive")
+    # Plots
+    plt.figure(figsize=(12, 6))
+    plt.plot(noise, label='Noise', color='gray', alpha=0.5)
+    plt.plot(error, label='Error', color='blue', linewidth=0.5)
+    plt.title(f"Performance: {engine_type.upper()}")
+    plt.savefig(os.path.join(run_dir, '01_performance.png'))
+    plt.close()
 
-# --- VISUALIZATION ---
-plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(10, 4))
+    plt.plot(noise[-100:], label='Noise', color='gray')
+    plt.plot(error[-100:], label='Error', color='blue')
+    plt.title("Steady State")
+    plt.savefig(os.path.join(run_dir, '02_zoom.png'))
+    plt.close()
 
-plt.plot(noise_ni, label='Primary Noise (Original)', color='gray')
-plt.plot(error_ni, label='Residual Error', color='blue', linewidth=1)
+    plt.figure(figsize=(10, 4))
+    plt.plot(noise[-100:], label='Noise', color='gray', linestyle='--')
+    plt.plot(anti[-100:], label='Anti-Noise', color='red')
+    plt.title("Phase Check")
+    plt.savefig(os.path.join(run_dir, '03_phase.png'))
+    plt.close()
 
-
-plt.title("Active Noise Control Performance: Primary Noise vs Residual Error")
-plt.xlabel("Samples")
-plt.ylabel("Amplitude")
-plt.grid(True, alpha=1)
-plt.legend(loc='upper right') # Forces legend to a clear spot
-
-# Save the file
-output_file = 'anc_results.png'
-plt.savefig(output_file, dpi=300)
-print(f"Simulation complete. Plot saved as {output_file}")
+if __name__ == "__main__":
+    n, e, a = run_simulation("invasive")
+    save_run("invasive", n, e, a)
+    print("Run complete.")

@@ -1,0 +1,5 @@
+{
+    "MU_CONTROLLER": 1e-05,
+    "MU_MODELING": 0.1,
+    "M_TAPS": 128
+}
