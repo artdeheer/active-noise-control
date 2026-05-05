@@ -1,0 +1,21 @@
+{
+    "CUTOFF_FREQ": 1827.0,
+    "DIST_ERR_MIC": 1.8,
+    "DIST_REF_MIC": 0.2,
+    "DIST_SEC_SPK": 1.5,
+    "DUCT_DIAMATER": 110,
+    "FS": 2500,
+    "MU_CONTROLLER": 1e-06,
+    "MU_MODELING": 0.1,
+    "M_TAPS": 128,
+    "PRIMARY_DELAY_SAMPLES": 13,
+    "SECONDARY_DELAY_SAMPLES": 2,
+    "SPEED_OF_SOUND": 343,
+    "S_TAPS": 32,
+    "TONES": [
+        100,
+        200,
+        400
+    ],
+    "V_NOISE_AMP": 0.05
+}

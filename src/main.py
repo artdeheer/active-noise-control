@@ -52,15 +52,23 @@ def save_run(engine_type, noise, error, anti):
     run_dir = os.path.join("results", engine_type, timestamp)
     os.makedirs(run_dir, exist_ok=True)
 
-    # Log parameters
-    with open(os.path.join(run_dir, 'config.json'), 'w') as f:
-        json.dump({
-            "MU_CONTROLLER": cfg.MU_CONTROLLER,
-            "MU_MODELING": cfg.MU_MODELING,
-            "M_TAPS": cfg.M_TAPS
-        }, f, indent=4)
+    # --- COMPLETE CONFIG LOGGING ---
+    # This loop grabs every constant defined in your config.py
+    complete_config = {}
+    for item in dir(cfg):
+        if item.isupper(): # Conventional way to grab constants
+            value = getattr(cfg, item)
+            # Convert numpy arrays/lists to strings/lists for JSON compatibility
+            if isinstance(value, np.ndarray):
+                complete_config[item] = value.tolist()
+            else:
+                complete_config[item] = value
 
-    # Plots
+    with open(os.path.join(run_dir, 'complete_config.json'), 'w') as f:
+        json.dump(complete_config, f, indent=4)
+
+    # --- Plots ---
+    # 01 Performance
     plt.figure(figsize=(12, 6))
     plt.plot(noise, label='Noise', color='gray', alpha=0.5)
     plt.plot(error, label='Error', color='blue', linewidth=0.5)
@@ -68,13 +76,15 @@ def save_run(engine_type, noise, error, anti):
     plt.savefig(os.path.join(run_dir, '01_performance.png'))
     plt.close()
 
+    # 02 Steady State
     plt.figure(figsize=(10, 4))
     plt.plot(noise[-100:], label='Noise', color='gray')
     plt.plot(error[-100:], label='Error', color='blue')
-    plt.title("Steady State")
+    plt.title("Steady State Zoom")
     plt.savefig(os.path.join(run_dir, '02_zoom.png'))
     plt.close()
 
+    # 03 Phase Check
     plt.figure(figsize=(10, 4))
     plt.plot(noise[-100:], label='Noise', color='gray', linestyle='--')
     plt.plot(anti[-100:], label='Anti-Noise', color='red')
@@ -82,7 +92,10 @@ def save_run(engine_type, noise, error, anti):
     plt.savefig(os.path.join(run_dir, '03_phase.png'))
     plt.close()
 
+    print(f"Results and full config saved to: {run_dir}")
+
 if __name__ == "__main__":
-    n, e, a = run_simulation("invasive")
-    save_run("invasive", n, e, a)
+    algorithm = "invasive"
+    n, e, a = run_simulation(algorithm)
+    save_run(algorithm, n, e, a)
     print("Run complete.")
