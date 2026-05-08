@@ -1,32 +1,33 @@
 import numpy as np
-import config as cfg
 
 class NonInvasiveEngine:
-    def __init__(self):
-        # 1. The 'Guess' of the secondary path
-        # Length 10 to match your 's_truth' in VirtualDuct
-        self.s_hat = np.zeros(10) 
+    def __init__(self, m):
+        self.m = m
+        # Initialize with very small random values
+        self.theta_hat = np.random.normal(0, 1e-6, 2 * self.m) 
+        self.phi_vector = np.zeros(2 * self.m)
         
-        # 2. Buffer for the anti-noise y_n
-        # This is what Engine A uses to see how the speaker behaves
-        self.y_buffer = np.zeros(10)
+        # Physical constraint: The model shouldn't assume the duct 
+        # has a gain of 1000x. We cap the weights at a reasonable value.
+        self.max_theta = 2.0 
 
-    def update(self, x_n, e_n, y_n):
-        """
-        Engine A: Updates the s_hat estimate using only existing signals.
-        """
-        # --- STEP A: Update the history of what we played ---
-        self.y_buffer[1:] = self.y_buffer[:-1]
-        self.y_buffer[0] = y_n
+    def update(self, r_n, a_n, e_n):
+        """Implements Equation 12: LS algorithm for online modeling."""
+        # 1. Update regression vector phi (Standard Shift)
+        self.phi_vector[1:self.m] = self.phi_vector[0:self.m-1]
+        self.phi_vector[0] = r_n
+        self.phi_vector[self.m+1:] = self.phi_vector[self.m:-1]
+        self.phi_vector[self.m] = a_n
 
-        # --- STEP B: Calculate the 'Modeling Error' ---
-        # We check: does our current s_hat correctly predict e_n?
-        # Note: In non-invasive, we treat e_n as the target for our y_n history
-        e_modeling = e_n - np.dot(self.y_buffer, self.s_hat)
+        # 2. Calculate estimation error epsilon (Equation 10)
+        epsilon = e_n - np.dot(self.phi_vector, self.theta_hat)
 
-        # --- STEP C: Update the s_hat weights (LMS style) ---
-        # We nudge s_hat so it gets better at predicting how y_n becomes e_n
-        # mu_s is the modeling learning rate (usually much smaller than mu_h)
-        self.s_hat += cfg.MU_MODELING * e_modeling * self.y_buffer
+        # 3. Update parameter vector using LS rule (Equation 12)
+        phi_norm_sq = np.dot(self.phi_vector, self.phi_vector) + 1e-6
+        
+        # Normalized update
+        delta_theta = (epsilon / phi_norm_sq) * self.phi_vector
+        self.theta_hat += delta_theta
 
-        return self.s_hat, 0.0
+
+        return self.theta_hat[:self.m], self.theta_hat[self.m:]
