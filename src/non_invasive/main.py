@@ -31,7 +31,7 @@ def run_simulation():
     controller = NonInvasiveController(m=m_taps)
 
     # The brain coordinates the NonInvasiveEngine and NonInvasiveController
-    brain = ANCBrain(engine, controller, is_orthogonal=True)
+    brain = ANCBrain(engine, controller)
 
     history = {"e": [], "d": [], "a": [], "v": []}
     current_e_n = 0
@@ -48,15 +48,17 @@ def run_simulation():
             print(f"\n[!] ALERT: Physical environment shift...")
             duct.change_environment() 
 
-        # Step 1: Brain processes the current state
-        # Orthogonal Brain generates y_out and a temporary v_probe for kickstarting
-        y_out, v_probe = brain.process_sample(x_n, current_e_n)
+        # Step 1: Generate the current control signal from the latest FIR weights.
+        y_out, v_probe = brain.generate_actuation(x_n)
         
         # Step 2: Physics simulation (Duct)
         # Note: In the orthogonal method, total actuation is y_out + v_probe
         d_n, current_e_n = duct.simulate_step(x_n, y_n=(y_out + v_probe))
+
+        # Step 3: Adapt with the reference, actuation, and error from the same sample.
+        brain.adapt(x_n, y_out + v_probe, current_e_n)
         
-        # Step 3: Logging
+        # Step 4: Logging
         history["e"].append(current_e_n)
         history["d"].append(d_n)
         history["a"].append(y_out)

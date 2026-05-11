@@ -1,37 +1,41 @@
 from scipy.linalg import toeplitz
 import numpy as np
 
+
 class NonInvasiveController:
     def __init__(self, m):
         self.m = m
         self.g_weights = np.zeros(self.m)
         self.r_buffer = np.zeros(self.m)
 
-    def solve_or_update(self, h_hat, s_hat, x_n, e_n):
-        """Analytical FIR solution (Section IV.B)[cite: 1]."""
-        # Build Toeplitz Autocorrelation Matrix Rs (Equation 29)[cite: 1]
-        r_elements = np.zeros(self.m)
-        for k in range(self.m):
-            r_elements[k] = np.sum(s_hat[:self.m-k] * s_hat[k:])
+    def solve_or_update(self, h_hat, s_hat):
+        """Solve the direct FIR normal equation R_s g = -p."""
+        h_hat = np.asarray(h_hat, dtype=float)
+        s_hat = np.asarray(s_hat, dtype=float)
+
+        if np.linalg.norm(s_hat) < 1e-12:
+            return
+
+        # Equation (29): Toeplitz autocorrelation matrix of the secondary path.
+        r_elements = np.array(
+            [np.dot(s_hat[: self.m - k], s_hat[k:]) for k in range(self.m)],
+            dtype=float,
+        )
         Rs = toeplitz(r_elements)
 
-        # Build cross-correlation vector p (Equation 28)[cite: 1]
-        # p = Ms^T * h_hat[cite: 1]
-        p = np.zeros(self.m)
-        for i in range(self.m):
-            p[i] = np.sum(s_hat[:self.m-i] * h_hat[i:])
+        # Equation (28): p = M_s^T h_hat.
+        p = np.array(
+            [np.dot(s_hat[: self.m - k], h_hat[k:]) for k in range(self.m)],
+            dtype=float,
+        )
 
         try:
-            # Stronger regularization to prevent the 'zero weights' trap[cite: 1]
-            reg = 0.05 * np.trace(Rs) / self.m + 1e-4
-            self.g_weights = np.linalg.solve(Rs + reg * np.eye(self.m), -p)
+            self.g_weights = np.linalg.solve(Rs, -p)
         except np.linalg.LinAlgError:
-            pass 
+            self.g_weights = -np.linalg.pinv(Rs) @ p
 
     def generate_actuation(self, r_n):
         self.r_buffer[1:] = self.r_buffer[:-1]
         self.r_buffer[0] = r_n
-        
-        # Generate anti-noise output
-        raw_a_n = np.dot(self.r_buffer, self.g_weights)
-        return np.clip(raw_a_n, -0.5, 0.5)
+
+        return float(np.dot(self.r_buffer, self.g_weights))

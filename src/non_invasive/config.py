@@ -17,10 +17,7 @@ PRIMARY_DELAY_SAMPLES = int((DIST_ERR_MIC / SPEED_OF_SOUND) * FS) # Source -> Er
 SECONDARY_DELAY_SAMPLES = int(((DIST_ERR_MIC - DIST_SEC_SPK) / SPEED_OF_SOUND) * FS) # Secondary -> Error Mic
 
 # MODELLING Stage, the system learning the map of the secondary path
-M_TAPS = 127                  # Number of taps for the Controller H(z) (FIR Filter)
 S_TAPS = 50                  # Number of taps for the Secondary Path Model S_hat(z)
-MU_CONTROLLER = 0.0005         # Step size for the FxLMS update (Engine B)
-MU_MODELING = 0.1          # Step size for the S_hat update (Engine A)
 
 # Invasive Modeling paramaters
 V_NOISE_AMP = 0.1            # Volume level of the "Invasive" white noise injection
