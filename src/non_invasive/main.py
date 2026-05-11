@@ -18,7 +18,9 @@ from anc_brain import ANCBrain
 from non_invasive.engine import NonInvasiveEngine
 from non_invasive.controller import NonInvasiveController
 
-def run_simulation():
+def run_simulation(seed=None):
+    seed = cfg.RANDOM_SEED if seed is None else seed
+    rng = np.random.default_rng(seed)
     fs = cfg.FS  
     duration = 30  
     n_samples = fs * duration
@@ -27,7 +29,7 @@ def run_simulation():
     
     # Initialize the Orthogonal components
     # Orthogonal method is non-invasive: it uses actual anti-noise to model the path
-    engine = NonInvasiveEngine(m=m_taps)
+    engine = NonInvasiveEngine(m=m_taps, rng=rng)
     controller = NonInvasiveController(
         m=m_taps,
         startup_samples=cfg.STARTUP_PROTECTION_SAMPLES,
@@ -42,7 +44,7 @@ def run_simulation():
     history = {"e": [], "d": [], "a": [], "v": []}
     current_e_n = 0
 
-    print("Starting ORTHOGONAL (Non-Invasive) simulation...")
+    print(f"Starting ORTHOGONAL (Non-Invasive) simulation with seed={seed}...")
 
     for n in range(n_samples):
         t = n / fs
@@ -72,7 +74,7 @@ def run_simulation():
 
     return history
 
-def save_run(history, custom_name=None):
+def save_run(history, custom_name=None, seed=None):
     # Determine directory name
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     folder_name = custom_name if custom_name else timestamp
@@ -89,7 +91,11 @@ def save_run(history, custom_name=None):
     # dB Reduction: Comparing initial noise to final steady-state error
     reduction_db = 10 * np.log10(np.mean(d[:1000]**2) / (np.mean(e[-1000:]**2) + 1e-10))
 
-    scores = {"mse_total": float(mse), "reduction_db": float(reduction_db)}
+    scores = {
+        "mse_total": float(mse),
+        "reduction_db": float(reduction_db),
+        "seed": int(seed) if seed is not None else None,
+    }
 
     with open(os.path.join(run_dir, 'scores.json'), 'w') as f:
         json.dump(scores, f, indent=4)
@@ -109,8 +115,14 @@ def save_run(history, custom_name=None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Orthogonal ANC Simulation")
     parser.add_argument("--name", "-n", type=str, help="Custom name for the result folder")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=cfg.RANDOM_SEED,
+        help="Random seed for deterministic non-invasive runs",
+    )
     args = parser.parse_args()
 
     # Run the cleaned-up Orthogonal simulation
-    hist = run_simulation()
-    save_run(hist, custom_name=args.name)
+    hist = run_simulation(seed=args.seed)
+    save_run(hist, custom_name=args.name, seed=args.seed)

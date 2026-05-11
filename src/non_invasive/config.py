@@ -24,10 +24,11 @@ V_NOISE_AMP = 0.1            # Volume level of the "Invasive" white noise inject
 
 
 # Non-invasive Modeling parameters
+RANDOM_SEED = 0               # Default seed so repeated runs are reproducible.
 STARTUP_PROTECTION_SAMPLES = 200  # Keep the first 80 ms bounded while S_hat bootstraps.
 STARTUP_ACTUATION_LIMIT = 1.0     # Symmetric startup-only output cap.
-CONTROLLER_UPDATE_ALPHA = 0.2     # Blend new FIR solves in instead of jumping instantly.
-MAX_ACTUATION_STEP = 0.1          # Slew-rate limit per sample for the anti-noise output.
+CONTROLLER_UPDATE_ALPHA = 0.25    # Tuned for faster post-change recovery without controller jumps.
+MAX_ACTUATION_STEP = 0.12         # Slightly looser slew limit to recover cancellation after path flips.
 
 
 # Signal Characteristics

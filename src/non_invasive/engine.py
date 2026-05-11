@@ -1,10 +1,12 @@
 import numpy as np
 
+
 class NonInvasiveEngine:
-    def __init__(self, m):
+    def __init__(self, m, rng=None):
         self.m = m
-        # Initialize with very small random values
-        self.theta_hat = np.random.normal(0, 1e-6, 2 * self.m) 
+        self.rng = rng if rng is not None else np.random.default_rng()
+        # Keep the tiny random bootstrap, but make it reproducible via an injected RNG.
+        self.theta_hat = self.rng.normal(0.0, 1e-6, 2 * self.m)
         self.phi_vector = np.zeros(2 * self.m)
         
         # Physical constraint: The model shouldn't assume the duct 
