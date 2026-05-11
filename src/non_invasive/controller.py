@@ -3,10 +3,23 @@ import numpy as np
 
 
 class NonInvasiveController:
-    def __init__(self, m):
+    def __init__(
+        self,
+        m,
+        startup_samples=0,
+        startup_actuation_limit=None,
+        update_alpha=1.0,
+        max_actuation_step=None,
+    ):
         self.m = m
         self.g_weights = np.zeros(self.m)
         self.r_buffer = np.zeros(self.m)
+        self.startup_samples = startup_samples
+        self.startup_actuation_limit = startup_actuation_limit
+        self.update_alpha = update_alpha
+        self.max_actuation_step = max_actuation_step
+        self.generated_samples = 0
+        self.last_actuation = 0.0
 
     def solve_or_update(self, h_hat, s_hat):
         """Solve the direct FIR normal equation R_s g = -p."""
@@ -30,12 +43,44 @@ class NonInvasiveController:
         )
 
         try:
-            self.g_weights = np.linalg.solve(Rs, -p)
+            target_weights = np.linalg.solve(Rs, -p)
         except np.linalg.LinAlgError:
-            self.g_weights = -np.linalg.pinv(Rs) @ p
+            target_weights = -np.linalg.pinv(Rs) @ p
+
+        self.g_weights = (
+            (1.0 - self.update_alpha) * self.g_weights
+            + self.update_alpha * target_weights
+        )
 
     def generate_actuation(self, r_n):
         self.r_buffer[1:] = self.r_buffer[:-1]
         self.r_buffer[0] = r_n
 
-        return float(np.dot(self.r_buffer, self.g_weights))
+        actuation = float(np.dot(self.r_buffer, self.g_weights))
+
+        # Protect startup while the secondary-path estimate is still bootstrapping.
+        if (
+            self.startup_actuation_limit is not None
+            and self.generated_samples < self.startup_samples
+        ):
+            actuation = float(
+                np.clip(
+                    actuation,
+                    -self.startup_actuation_limit,
+                    self.startup_actuation_limit,
+                )
+            )
+
+        # Keep the controller output continuous when the FIR weights change abruptly.
+        if self.max_actuation_step is not None:
+            actuation = float(
+                np.clip(
+                    actuation,
+                    self.last_actuation - self.max_actuation_step,
+                    self.last_actuation + self.max_actuation_step,
+                )
+            )
+
+        self.last_actuation = actuation
+        self.generated_samples += 1
+        return actuation

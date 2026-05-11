@@ -28,7 +28,13 @@ def run_simulation():
     # Initialize the Orthogonal components
     # Orthogonal method is non-invasive: it uses actual anti-noise to model the path
     engine = NonInvasiveEngine(m=m_taps)
-    controller = NonInvasiveController(m=m_taps)
+    controller = NonInvasiveController(
+        m=m_taps,
+        startup_samples=cfg.STARTUP_PROTECTION_SAMPLES,
+        startup_actuation_limit=cfg.STARTUP_ACTUATION_LIMIT,
+        update_alpha=cfg.CONTROLLER_UPDATE_ALPHA,
+        max_actuation_step=cfg.MAX_ACTUATION_STEP,
+    )
 
     # The brain coordinates the NonInvasiveEngine and NonInvasiveController
     brain = ANCBrain(engine, controller)
