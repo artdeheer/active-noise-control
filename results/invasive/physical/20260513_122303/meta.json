@@ -1,0 +1,11 @@
+{
+  "algorithm": "invasive",
+  "mode": "physical",
+  "device_fs_hz": 48000,
+  "process_fs_hz": 2500,
+  "decimated": true,
+  "block_frames": 96,
+  "duration_requested_s": 20.0,
+  "duration_wall_s": 20.15618348121643,
+  "n_control_samples": 50000
+}

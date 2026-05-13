@@ -1,0 +1,12 @@
+{
+  "algorithm": "orthogonal",
+  "mode": "physical",
+  "device_fs_hz": 48000,
+  "process_fs_hz": 2500,
+  "decimated": true,
+  "block_frames": 96,
+  "duration_requested_s": 30.0,
+  "duration_wall_s": 30.24787211418152,
+  "n_control_samples": 75000,
+  "s_taps": 50
+}

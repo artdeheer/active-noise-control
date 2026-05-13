@@ -3,10 +3,17 @@ import json
 import sys
 import shutil
 import argparse
+from pathlib import Path
+
 import numpy as np
 from datetime import datetime
 import matplotlib
-matplotlib.use('Agg') 
+
+_SRC = Path(__file__).resolve().parent.parent
+if str(_SRC) not in sys.path:
+    sys.path.append(str(_SRC))
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 # Internal Project Imports
@@ -24,7 +31,7 @@ def run_simulation(seed=None):
     fs = cfg.FS  
     duration = 30  
     n_samples = fs * duration
-    duct = VirtualDuct()
+    duct = VirtualDuct(cfg)
     m_taps = cfg.S_TAPS 
     
     # Initialize the Orthogonal components
@@ -78,7 +85,7 @@ def save_run(history, custom_name=None, seed=None):
     # Determine directory name
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     folder_name = custom_name if custom_name else timestamp
-    run_dir = os.path.join("results", "orthogonal", folder_name)
+    run_dir = os.path.join("results", "orthogonal", "virtual", folder_name)
 
     if os.path.exists(run_dir):
         shutil.rmtree(run_dir)

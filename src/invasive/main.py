@@ -1,9 +1,17 @@
 import os
 import json
+import sys
+from pathlib import Path
+
 import numpy as np
 from datetime import datetime
 import matplotlib
-matplotlib.use('Agg') 
+
+_SRC = Path(__file__).resolve().parent.parent
+if str(_SRC) not in sys.path:
+    sys.path.append(str(_SRC))
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 import config as cfg
@@ -16,7 +24,7 @@ def run_simulation(engine_type="invasive"):
     duration = 100  
     n_samples = fs * duration
 
-    duct = VirtualDuct()
+    duct = VirtualDuct(cfg, use_acoustic_secondary_delay=False)
     engine = InvasiveEngine()
     brain = ANCBrain(engine)
 
@@ -49,7 +57,7 @@ def run_simulation(engine_type="invasive"):
 
 def save_run(engine_type, noise, error, anti):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir = os.path.join("results", engine_type, timestamp)
+    run_dir = os.path.join("results", engine_type, "virtual", timestamp)
     os.makedirs(run_dir, exist_ok=True)
 
     # --- COMPLETE CONFIG LOGGING ---
